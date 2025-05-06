@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { supabase, User } from '@/lib/supabase';
 import ChatContainer from '@/components/chat/ChatContainer';
 import { useToast } from '@/hooks/use-toast';
 
-const Index = () => {
+const ChatPage = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { conversationId } = useParams<{ conversationId: string }>();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,7 +77,11 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
+  if (!conversationId) {
+    return <Navigate to="/" replace />;
+  }
+
   return <ChatContainer user={user} />;
 };
 
-export default Index;
+export default ChatPage;
