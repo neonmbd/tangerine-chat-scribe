@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase, User, Conversation } from "@/lib/supabase";
-import { Calendar, MessageSquare, Plus, Search, Settings, User as UserIcon } from "lucide-react";
+import { Calendar, LogOut, MessageSquare, Plus, Search, Settings, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ConversationItem from "../chat/ConversationItem";
 import { formatDistanceToNow } from "date-fns";
@@ -21,11 +20,14 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { conversationId } = useParams<{ conversationId: string }>();
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchConversations();
-    subscribeToConversations();
+    if (user) {
+      fetchConversations();
+      subscribeToConversations();
+    }
   }, [user]);
 
   const fetchConversations = async () => {
@@ -124,11 +126,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
   }, {});
 
   return (
-    <div className="flex flex-col w-[280px] h-full bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <div className="flex flex-col w-[280px] h-full bg-[hsl(var(--sidebar))] text-foreground border-r border-[hsl(var(--sidebar-border))]">
       <div className="p-4">
         <Button
           onClick={createNewConversation}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground gap-2"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
         >
           <Plus size={16} />
           New Chat
@@ -141,7 +143,7 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
           <Input
             type="text"
             placeholder="Search conversations..."
-            className="pl-8 bg-sidebar-accent"
+            className="pl-8 bg-[hsl(var(--sidebar-accent))]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -149,35 +151,45 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
       </div>
 
       <ScrollArea className="flex-1 px-4 py-2">
-        {Object.entries(groupedConversations).map(([date, convos]) => (
-          <div key={date} className="mb-4">
-            <h3 className="text-xs font-medium text-muted-foreground mb-2">
-              {formatDistanceToNow(new Date(date), { addSuffix: true })}
-            </h3>
-            <div className="space-y-1">
-              {convos.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  isActive={false}
-                />
-              ))}
-            </div>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-14 bg-[hsl(var(--sidebar-accent))] rounded-lg animate-pulse" />
+            ))}
           </div>
-        ))}
-        {filteredConversations.length === 0 && !isLoading && (
-          <div className="text-center py-4 text-muted-foreground">
-            {searchQuery
-              ? "No conversations found"
-              : "No conversations yet. Start a new chat!"}
-          </div>
+        ) : (
+          <>
+            {Object.entries(groupedConversations).map(([date, convos]) => (
+              <div key={date} className="mb-4">
+                <h3 className="text-xs font-medium text-muted-foreground mb-2">
+                  {formatDistanceToNow(new Date(date), { addSuffix: true })}
+                </h3>
+                <div className="space-y-1">
+                  {convos.map((conversation) => (
+                    <ConversationItem
+                      key={conversation.id}
+                      conversation={conversation}
+                      isActive={conversation.id === conversationId}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {filteredConversations.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                {searchQuery
+                  ? "No conversations found"
+                  : "No conversations yet. Start a new chat!"}
+              </div>
+            )}
+          </>
         )}
       </ScrollArea>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-[hsl(var(--sidebar-border))]">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-[hsl(var(--sidebar-accent))] flex items-center justify-center">
               {user?.avatar_url ? (
                 <img
                   src={user.avatar_url}
@@ -188,9 +200,9 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
                 <UserIcon className="h-4 w-4" />
               )}
             </div>
-            <div className="ml-2">
+            <div>
               <p className="text-sm font-medium truncate max-w-[160px]">
-                {user?.name || user?.email || "User"}
+                {user?.name || user?.email?.split("@")[0] || "User"}
               </p>
             </div>
           </div>
@@ -198,31 +210,28 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
             variant="ghost"
             size="icon"
             onClick={() => navigate("/settings")}
+            className="h-8 w-8"
           >
             <Settings className="h-4 w-4" />
           </Button>
         </div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="w-full justify-start"
-            onClick={() => navigate("/chats")}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            <span className="text-xs">Chats</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start"
-            onClick={() => navigate("/profile")}
+            className="justify-start"
+            onClick={() => navigate("/settings")}
           >
             <UserIcon className="h-4 w-4 mr-2" />
             <span className="text-xs">Profile</span>
           </Button>
-          <Button variant="outline" size="sm" className="w-full justify-start" onClick={onSignOut}>
-            <Calendar className="h-4 w-4 mr-2" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="justify-start text-destructive hover:text-destructive" 
+            onClick={onSignOut}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
             <span className="text-xs">Logout</span>
           </Button>
         </div>

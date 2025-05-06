@@ -37,14 +37,13 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 33% 98%;
+    --sidebar: 220 33% 98%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 14 100% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 14 100% 57%;
+    --sidebar-accent: 220 14% 96%;
+
+    --chat-user: 14 100% 97%;
+    --chat-assistant: 0 0% 100%; 
   }
 
   .dark {
@@ -76,14 +75,13 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 14 100% 57%;
 
-    --sidebar-background: 223 47% 11%;
+    --sidebar: 223 47% 11%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 14 100% 57%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 14 100% 57%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+
+    --chat-user: 14 60% 30%;
+    --chat-assistant: 222.2 47.4% 11.2%;
   }
 }
 
@@ -91,7 +89,6 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground font-sans;
   }
@@ -99,18 +96,42 @@
 
 @layer components {
   .message-user {
-    @apply bg-chat-user rounded-2xl rounded-br-sm py-3 px-4 max-w-3xl;
+    @apply bg-[hsl(var(--chat-user))] rounded-2xl rounded-br-sm py-3 px-4 max-w-[85%];
   }
-
+  
   .message-assistant {
-    @apply bg-chat-assistant border rounded-2xl rounded-bl-sm py-3 px-4 max-w-3xl shadow-sm;
+    @apply bg-[hsl(var(--chat-assistant))] border rounded-2xl rounded-bl-sm py-3 px-4 max-w-[85%] shadow-sm;
   }
-
-  .typing-indicator {
-    @apply inline-block h-3 w-3 rounded-full bg-accent animate-blink;
-  }
-
+  
   .chat-input {
     @apply w-full resize-none rounded-xl border border-input bg-background p-3 pr-12 shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  }
+
+  .typing-indicator span {
+    @apply inline-block h-2 w-2 rounded-full bg-primary/80 ml-1 mr-1;
+    animation: blink 1.4s infinite both;
+  }
+  
+  .typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  
+  @keyframes blink {
+    0% { opacity: 0.1; }
+    20% { opacity: 1; }
+    100% { opacity: 0.1; }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }

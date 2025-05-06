@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import Sidebar from '@/components/layout/Sidebar';
 
 const SettingsPage = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -81,6 +82,23 @@ const SettingsPage = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: 'Signed out',
+        description: 'You have been successfully signed out.',
+      });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -94,69 +112,79 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="flex items-center mb-6">
-        <Link to="/" className="mr-4">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Settings</h1>
+    <div className="flex h-screen bg-background">
+      {/* Sidebar - visible on desktop, hidden on mobile */}
+      <div className="hidden md:block">
+        <Sidebar user={user} onSignOut={handleSignOut} />
       </div>
+      
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="container max-w-4xl py-8">
+          <div className="flex items-center mb-6">
+            <Link to="/" className="mr-4 md:hidden">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">Settings</h1>
+          </div>
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>
-              Manage your account settings and preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={user.email || ''}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground">
-                Your email address cannot be changed
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Display Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleSaveProfile} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save changes'}
-            </Button>
-          </CardFooter>
-        </Card>
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile</CardTitle>
+                <CardDescription>
+                  Manage your account settings and preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    value={user.email || ''}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your email address cannot be changed
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Display Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={handleSaveProfile} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save changes'}
+                </Button>
+              </CardFooter>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Danger Zone</CardTitle>
-            <CardDescription>
-              Irreversible actions that affect your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Once you delete your account, all your data will be permanently removed.
-              This action cannot be undone.
-            </p>
-            <Button variant="destructive">Delete Account</Button>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Danger Zone</CardTitle>
+                <CardDescription>
+                  Irreversible actions that affect your account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Once you delete your account, all your data will be permanently removed.
+                  This action cannot be undone.
+                </p>
+                <Button variant="destructive">Delete Account</Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

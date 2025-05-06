@@ -4,6 +4,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import { supabase, User } from '@/lib/supabase';
 import ChatContainer from '@/components/chat/ChatContainer';
 import { useToast } from '@/hooks/use-toast';
+import Sidebar from '@/components/layout/Sidebar';
 
 const ChatPage = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -81,7 +82,19 @@ const ChatPage = () => {
     return <Navigate to="/" replace />;
   }
 
-  return <ChatContainer user={user} />;
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar - visible on desktop, hidden on mobile */}
+      <div className="hidden md:block">
+        <Sidebar user={user} onSignOut={handleSignOut} />
+      </div>
+      
+      {/* Chat container */}
+      <div className="flex-1">
+        <ChatContainer user={user} />
+      </div>
+    </div>
+  );
 };
 
 export default ChatPage;

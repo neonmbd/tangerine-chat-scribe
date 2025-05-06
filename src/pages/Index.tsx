@@ -1,13 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase, User } from '@/lib/supabase';
-import ChatContainer from '@/components/chat/ChatContainer';
 import { useToast } from '@/hooks/use-toast';
+import Sidebar from '@/components/layout/Sidebar';
+import { Button } from '@/components/ui/button';
+import { MessageSquare, Plus } from 'lucide-react';
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -61,6 +64,35 @@ const Index = () => {
     }
   };
 
+  const createNewConversation = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .insert([
+          {
+            user_id: user.id,
+            title: "New Conversation",
+            updated_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      navigate(`/chat/${data.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast({
+        title: "Error creating conversation",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -76,7 +108,34 @@ const Index = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  return <ChatContainer user={user} />;
+  return (
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <Sidebar user={user} onSignOut={handleSignOut} />
+      
+      {/* Main content */}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-md text-center px-4">
+          <div className="mb-6 flex justify-center">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <MessageSquare className="h-8 w-8 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Welcome to Mandaleen AI Chat</h1>
+          <p className="text-muted-foreground mb-6">
+            Start a new conversation or select an existing one from the sidebar
+          </p>
+          <Button 
+            onClick={createNewConversation}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          >
+            <Plus size={18} />
+            New Conversation
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Index;
