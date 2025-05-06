@@ -30,7 +30,27 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ user }) => {
     if (conversationId && user) {
       fetchConversation();
       fetchMessages();
-      subscribeToMessages();
+      
+      // Set up realtime subscription
+      const channel = supabase
+        .channel(`messages-${conversationId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "messages",
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          () => {
+            fetchMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [conversationId, user]);
 
@@ -86,30 +106,6 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ user }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const subscribeToMessages = () => {
-    if (!conversationId) return;
-
-    const subscription = supabase
-      .channel(`messages-${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        () => {
-          fetchMessages();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
   };
 
   const handleSendMessage = async (content: string) => {

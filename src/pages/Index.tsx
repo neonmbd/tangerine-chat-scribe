@@ -17,7 +17,30 @@ const Index = () => {
     const checkUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        setUser(user as unknown as User | null);
+        
+        if (user) {
+          // Get user profile from our users table
+          const { data: profileData, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            // PGRST116 is "No rows returned" - this might happen on first login before profile creation
+            console.error('Error fetching user profile:', profileError);
+          }
+
+          setUser({
+            id: user.id,
+            email: user.email,
+            name: profileData?.name || user.email?.split('@')[0] || 'User',
+            avatar_url: profileData?.avatar_url,
+            settings: profileData?.settings
+          });
+        } else {
+          setUser(null);
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
         toast({
@@ -33,9 +56,26 @@ const Index = () => {
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('Auth state changed:', event);
+        
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setUser(session?.user as unknown as User || null);
+          if (session?.user) {
+            // Get user profile from our users table after signin
+            const { data: profileData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            setUser({
+              id: session.user.id,
+              email: session.user.email,
+              name: profileData?.name || session.user.email?.split('@')[0] || 'User',
+              avatar_url: profileData?.avatar_url,
+              settings: profileData?.settings
+            });
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
@@ -65,9 +105,18 @@ const Index = () => {
   };
 
   const createNewConversation = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to create a conversation.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log("Creating conversation for user:", user.id);
+      
       const { data, error } = await supabase
         .from("conversations")
         .insert([
@@ -80,14 +129,22 @@ const Index = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error("No data returned from insert");
+      }
+
+      console.log("Created conversation:", data);
       navigate(`/chat/${data.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating conversation:", error);
       toast({
         title: "Error creating conversation",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     }

@@ -26,7 +26,27 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
   useEffect(() => {
     if (user) {
       fetchConversations();
-      subscribeToConversations();
+      
+      // Set up realtime subscription for conversations
+      const channel = supabase
+        .channel("conversations-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "conversations",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchConversations();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -35,13 +55,20 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
     
     try {
       setIsLoading(true);
+      console.log("Fetching conversations for user:", user.id);
+      
       const { data, error } = await supabase
         .from("conversations")
         .select("*")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching conversations:", error);
+        throw error;
+      }
+      
+      console.log("Fetched conversations:", data?.length || 0);
       setConversations(data || []);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -55,34 +82,19 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
     }
   };
 
-  const subscribeToConversations = () => {
-    if (!user) return;
-
-    const subscription = supabase
-      .channel("conversations-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "conversations",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchConversations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  };
-
   const createNewConversation = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to create a conversation.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      console.log("Creating conversation for user:", user.id);
+      
       const { data, error } = await supabase
         .from("conversations")
         .insert([
@@ -95,14 +107,22 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onSignOut }) => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error("No data returned from insert");
+      }
+
+      console.log("Created conversation:", data);
       navigate(`/chat/${data.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating conversation:", error);
       toast({
         title: "Error creating conversation",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     }

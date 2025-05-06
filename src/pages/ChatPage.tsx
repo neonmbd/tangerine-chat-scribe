@@ -16,7 +16,29 @@ const ChatPage = () => {
     const checkUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        setUser(user as unknown as User | null);
+        
+        if (user) {
+          // Get user profile from our users table
+          const { data: profileData, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Error fetching user profile:', profileError);
+          }
+
+          setUser({
+            id: user.id,
+            email: user.email,
+            name: profileData?.name || user.email?.split('@')[0] || 'User',
+            avatar_url: profileData?.avatar_url,
+            settings: profileData?.settings
+          });
+        } else {
+          setUser(null);
+        }
       } catch (error) {
         console.error('Error fetching user:', error);
         toast({
@@ -32,9 +54,24 @@ const ChatPage = () => {
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setUser(session?.user as unknown as User || null);
+          if (session?.user) {
+            // Get user profile from our users table after signin
+            const { data: profileData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+              
+            setUser({
+              id: session.user.id,
+              email: session.user.email,
+              name: profileData?.name || session.user.email?.split('@')[0] || 'User',
+              avatar_url: profileData?.avatar_url,
+              settings: profileData?.settings
+            });
+          }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
         }
